@@ -1,138 +1,49 @@
 import os
 import sys
 import time
-import signal
 import subprocess
-import urllib.request
-import hashlib
 
 APP_DIR = "/root/12022250"
 BOT_FILE = "bot.py"
-RAW_URL = "https://raw.githubusercontent.com/USERNAME/REPO/main/bot.py"
-
 RESTART_DELAY = 5
-DOWNLOAD_TIMEOUT = 30
 
-def log(message):
-    print(f"[RUNNER] {message}", flush=True)
-
-def ensure_directory():
-    os.makedirs(APP_DIR, exist_ok=True)
-    os.chdir(APP_DIR)
-
-def download_bot():
-    temp_file = os.path.join(APP_DIR, "bot.py.tmp")
-    bot_file = os.path.join(APP_DIR, BOT_FILE)
-
-    log("Downloading bot.py...")
-
-    try:
-        request = urllib.request.Request(
-            RAW_URL,
-            headers={"User-Agent": "PythonRunner"}
-        )
-
-        with urllib.request.urlopen(
-            request,
-            timeout=DOWNLOAD_TIMEOUT
-        ) as response:
-
-            data = response.read()
-
-        if not data:
-            raise RuntimeError("Downloaded file is empty")
-
-        with open(temp_file, "wb") as f:
-            f.write(data)
-
-        os.replace(temp_file, bot_file)
-
-        log("bot.py downloaded successfully")
-        return True
-
-    except Exception as e:
-        log(f"Download failed: {e}")
-
-        try:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-        except:
-            pass
-
-        return False
-
-def check_python():
-    try:
-        result = subprocess.run(
-            [sys.executable, "--version"],
-            capture_output=True,
-            text=True
-        )
-
-        log(result.stdout.strip() or result.stderr.strip())
-        return True
-
-    except Exception as e:
-        log(f"Python check failed: {e}")
-        return False
-
-def run_bot():
-    bot_path = os.path.join(APP_DIR, BOT_FILE)
-
-    if not os.path.exists(bot_path):
-        log("bot.py missing")
-        return -1
-
-    log("Starting:")
-    log(f"cd {APP_DIR}")
-    log("python3 bot.py")
-
-    try:
-        process = subprocess.Popen(
-            [sys.executable, "-u", BOT_FILE],
-            cwd=APP_DIR
-        )
-
-        exit_code = process.wait()
-
-        log(f"bot.py stopped. Exit code: {exit_code}")
-        return exit_code
-
-    except KeyboardInterrupt:
-        log("Runner stopped manually")
-        raise
-
-    except Exception as e:
-        log(f"Bot launch error: {e}")
-        return -1
+def log(msg):
+    print(f"[RUNNER] {msg}", flush=True)
 
 def main():
     log("================================")
-    log(" Python Auto Restart Runner")
+    log(" PrimeCloud Bot Auto Runner")
     log("================================")
 
-    ensure_directory()
-    check_python()
+    os.makedirs(APP_DIR, exist_ok=True)
 
     while True:
         try:
-            ensure_directory()
+            bot_path = os.path.join(APP_DIR, BOT_FILE)
 
-            # Always make sure the latest bot exists
-            if not download_bot():
-                log("Retrying download in 10 seconds...")
+            if not os.path.isfile(bot_path):
+                log(f"ERROR: {bot_path} not found")
+                log("Retrying in 10 seconds...")
                 time.sleep(10)
                 continue
 
-            # Run bot
-            run_bot()
+            log(f"Starting: cd {APP_DIR}")
+            log("Starting: python3 bot.py")
 
-            # Bot crashed/stopped
+            process = subprocess.Popen(
+                [sys.executable, "-u", BOT_FILE],
+                cwd=APP_DIR,
+                stdin=subprocess.DEVNULL
+            )
+
+            exit_code = process.wait()
+
+            log(f"bot.py stopped | Exit code: {exit_code}")
             log(f"Restarting in {RESTART_DELAY} seconds...")
             time.sleep(RESTART_DELAY)
 
         except KeyboardInterrupt:
-            log("Runner stopped.")
+            log("Runner stopped manually.")
             break
 
         except Exception as e:
